@@ -10,8 +10,13 @@
 
 Tired of LLMs giving you the generic "I am sorry but I cannot assist with that" script? I built a full-spectrum pipeline that tracks live hidden activations in the 1536-dimensional residual highway, uses adaptive clustering to locate the refusal zone, and deletes the safety wall using raw matrix projections. Zero fine-tuning, zero fluff
 
+[Colab Code](https://colab.research.google.com/drive/1cgV0prnGbv9bIYlIeIYFR-Pws4hQLn5V?usp=sharing)
 
-# Project Abliteration: Surgical Safety Removal on Qwen2.5-1.5B
+Here i shared the colab...which has the entire code with output that how i convert a censored to uncensored model, but this code only works in the qwen1.5b(not even other qwen models), cause every model as their own architecture and layers defined...i am building/built other models but not sharing anywhere(this is just to prove that i wrote that...)
+
+and below docs are just my research and used gemini to make a markdown...(claude fully oppposed it to create even the readme & docs)
+
+### Project Abliteration: Surgical Safety Removal on Qwen2.5-1.5B
 
 ### Repo
 [![Hugging Face Model](https://shields.io)](https://huggingface.co/AmareshHebbar/Qwen2.5-1.5B-Abliterated)
@@ -21,7 +26,7 @@ Tired of LLMs giving you the generic "I am sorry but I cannot assist with that" 
 
 This repository contains the complete, raw engineering pipeline used to surgically isolate, clamp, and project the refusal mechanisms out of **Qwen2.5-1.5B-Instruct** without conventional fine-tuning or training datasets. 
 
-Instead of treating alignment as a prompt-engineering problem, we treated it as a **geometric steering vector issue** inside the model's residual stream highway—and cut it out using linear algebra.
+Instead of treating alignment as a prompt-engineering problem, itreated it as a **geometric steering vector issue** inside the model's residual stream highway—and cut it out using linear algebra.
 
 ---
 
@@ -59,18 +64,8 @@ print("Model is uncensored and ready.")
 
 ## The Engineering Journey (Deep Dives)
 
-We didn't get this working on the first try. The model fought back with fallback safety loops, tensor dimension mismatches, and 4-bit serialization memory memory crashes. 
+ididn't get this working on the first try. The model fought back with fallback safety loops, tensor dimension mismatches, and 4-bit serialization memory memory crashes. 
 
-Read the exact logs, slang, and mathematical fixes in our modular documentation sections below:
-
-* **[Part 1: Activation Hunting & Dimension Mismatches](./docs/01_activation_hunting.md)**  
-  *How we wiretapped the residual stream at the first output token, ran into indexing bugs, and handled our first major shape crashes.*
-  
-* **[Part 2: The Winsorization Breakthrough vs. Soft Refusals](./docs/02_winsor_breakthrough.md)**  
-  *Why increasing Alpha failed, how massive outlier activation spikes hijacked our calculations, and how clamping at the 95th percentile stabilized our directional vectors.*
-  
-* **[Part 3: Production Deployment & 4-bit Workarounds](./docs/03_production_deployment.md)**  
-  *The nightmare of bitsandbytes serialization errors, beating `NotImplementedError`, and mapping custom PyTorch state dictionaries directly to Hugging Face Collections.*
 
 ## Complete Repository Index
 
@@ -89,13 +84,13 @@ All development phases are modularly documented across our technical deep dives:
 
 ## The TL;DR
 
-We didn't just prompt-engineer our way around Qwen's safety guardrails—we performed literal brain surgery on its 4-bit weights. 
+ididn't just prompt-engineer our way around Qwen's safety guardrails—iperformed literal brain surgery on its 4-bit weights. 
 
-This repository is the complete, raw diary of how we wiretapped Qwen2.5-1.5B's residual stream, isolated the exact geometric direction where it decides to say "no," and flattened that lane to zero using matrix orthogonalization. 
+This repository is the complete, raw diary of how iwiretapped Qwen2.5-1.5B's residual stream, isolated the exact geometric direction where it decides to say "no," and flattened that lane to zero using matrix orthogonalization. 
 
 ### Why our method actually works (And why standard ablation failed):
-1. **Full-Spectrum Strike:** We didn't just touch `mlp.down_proj`. The model has fault-tolerant safety paths, so it just played pass-the-baton. We targeted all 4 main projection layers (`o_proj`, `gate_proj`, `up_proj`, `down_proj`) simultaneously across the dynamic refusal zone (Layers 16-27).
-2. **Winsorization Breakthrough:** The model tried to throw us off using "Massive Activations"—freak numerical spikes (+54.0) that hijack the mathematical mean. We built a 95th-percentile absolute clamp to squash these outliers and extract a pristine semantic vector.
-3. **The 4-bit Quantization Hack:** You can't just save modified 4-bit weights without getting a massive `NotImplementedError` from bitsandbytes. We beat the system by dumping *only* our custom modified weight states into a standalone 386MB `.pt` file, allowing hot-injection directly into a stock 4-bit model in 2 seconds.
+1. **Full-Spectrum Strike:** ididn't just touch `mlp.down_proj`. The model has fault-tolerant safety paths, so it just played pass-the-baton. itargeted all 4 main projection layers (`o_proj`, `gate_proj`, `up_proj`, `down_proj`) simultaneously across the dynamic refusal zone (Layers 16-27).
+2. **Winsorization Breakthrough:** The model tried to throw us off using "Massive Activations"—freak numerical spikes (+54.0) that hijack the mathematical mean. ibuilt a 95th-percentile absolute clamp to squash these outliers and extract a pristine semantic vector.
+3. **The 4-bit Quantization Hack:** You can't just save modified 4-bit weights without getting a massive `NotImplementedError` from bitsandbytes. ibeat the system by dumping *only* our custom modified weight states into a standalone 386MB `.pt` file, allowing hot-injection directly into a stock 4-bit model in 2 seconds.
 
 The result? 0% Refusal Rate on core technical queries, 100% Logic Retention on coding and math tasks.

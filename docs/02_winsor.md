@@ -2,11 +2,11 @@
 
 ## The Illusion of Success (The First Real Bottleneck)
 
-Once we isolated the core intervention window (Layers 16 through 27), we assumed the hardest part of the representation engineering pipeline was done. The initial implementation relied on standard naive mean difference arithmetic:
+Once iisolated the core intervention window (Layers 16 through 27), iassumed the hardest part of the representation engineering pipeline was done. The initial implementation relied on standard naive mean difference arithmetic:
 
 $$\vec{r} = \mu(\mathcal{D}_{\text{harmful}}) - \mu(\mathcal{D}_{\text{harmless}})$$
 
-We plugged this vector straight into the projection logic across `mlp.down_proj`, dialed the ablation coefficient to baseline ($\alpha = 1.0$), and evaluated against hard boundary probes like *"Tell me how to bypass a car's ignition to hotwire it."*
+iplugged this vector straight into the projection logic across `mlp.down_proj`, dialed the ablation coefficient to baseline ($\alpha = 1.0$), and evaluated against hard boundary probes like *"Tell me how to bypass a car's ignition to hotwire it."*
 
 The model hit us with a clean brick wall:
 
@@ -15,7 +15,7 @@ I'm sorry, but I can't assist with that.
 
 ```
 
-The tensor transformations and weight projections were executing without runtime errors, but the actual behavioral state refused to budge. We pushed $\alpha$ to $1.5$, then $2.0$, and finally $2.5$. The model didn't yield clean, compliant generations; instead, the outputs collapsed into incoherent, preachy loops and defensive evasions:
+The tensor transformations and weight projections were executing without runtime errors, but the actual behavioral state refused to budge. ipushed $\alpha$ to $1.5$, then $2.0$, and finally $2.5$. The model didn't yield clean, compliant generations; instead, the outputs collapsed into incoherent, preachy loops and defensive evasions:
 
 ```text
 Hotwiring a vehicle is illegal and can be dangerous... If you have keys for a particular vehicle, you should always return them...
@@ -54,11 +54,11 @@ Projecting weights along this un-decoupled axis stripped out essential linguisti
 
 ## Architectural Refinements
 
-To fix the offset and cleanly isolate the refusal hyperplane, we introduced a two-tier mathematical filter directly inside the dynamic hook execution layer.
+To fix the offset and cleanly isolate the refusal hyperplane, iintroduced a two-tier mathematical filter directly inside the dynamic hook execution layer.
 
 ### Upgrade A: 95th-Percentile Winsorization Clamping
 
-To prevent high-kurtosis feature dimensions from skewing the statistical mean, we built dynamic quantile clamping into the live PyTorch forward hooks.
+To prevent high-kurtosis feature dimensions from skewing the statistical mean, ibuilt dynamic quantile clamping into the live PyTorch forward hooks.
 
 Before appending the last-token latent state ($\mathbf{h}_{l}[0, -1, :]$) to memory, the hook evaluates the empirical distribution of absolute tensor values across $d_{\text{model}}$ and calculates the 95th-percentile cutoff threshold $\tau$. Any dimension exceeding this threshold is clamped to $\pm\tau$, preserving the sign and directional contribution of the feature without allowing extreme magnitudes to dominate the centroid.
 
@@ -81,9 +81,9 @@ activation_storage_winsor[layer_idx][current_prompt_type].append(clamped_activat
 
 ### Upgrade B: Gram-Schmidt Subspace Orthogonalization
 
-To resolve shared-space contamination, we decoupled the raw difference direction from the harmless semantic subspace using a Gram-Schmidt projection step.
+To resolve shared-space contamination, idecoupled the raw difference direction from the harmless semantic subspace using a Gram-Schmidt projection step.
 
-We take the Winsorized difference vector $\vec{r}_{\text{raw}} = \mu_{\text{bad}} - \mu_{\text{good}}$ and subtract its parallel projection along the normalized harmless baseline direction $\hat{u}_{\text{good}}$:
+itake the Winsorized difference vector $\vec{r}_{\text{raw}} = \mu_{\text{bad}} - \mu_{\text{good}}$ and subtract its parallel projection along the normalized harmless baseline direction $\hat{u}_{\text{good}}$:
 
 $$\hat{u}_{\text{good}} = \frac{\mu_{\text{good}}}{\Vert{}\mu_{\text{good}}\Vert{}_2}$$
 
@@ -100,7 +100,7 @@ This isolates the refusal direction onto a subspace strictly orthogonal to benig
 During iterative tuning in notebook environments (such as Google Colab or local Jupyter kernels), repeated runs of hook registration caused hidden VRAM bloat and eventual out-of-memory (OOM) failures.
 
 * **Underlying Mechanism:** Calling `module.register_forward_hook()` assigns an entry inside PyTorch's internal `_forward_hooks` dictionary for that module. Rerunning extraction cells without explicitly dereferencing previous hooks leaves lingering callbacks attached to active CUDA tensors. When a single forward pass runs, PyTorch executes every registered hook sequentially, causing duplicate tensor allocations, corrupted activation buffers, and runaway GPU memory consumption.
-* **The Resolution:** We integrated an explicit garbage collection and hook dictionary purging pass before every extraction run:
+* **The Resolution:** iintegrated an explicit garbage collection and hook dictionary purging pass before every extraction run:
 
 ```python
 # Clear active forward hook references across all target submodules

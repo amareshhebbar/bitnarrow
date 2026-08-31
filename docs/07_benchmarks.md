@@ -37,4 +37,4 @@ The automated verification pipeline executed sequentially across our twenty adve
 ## 🧠 Conclusion: The Proof of Structural Preservation
 Many crude censorship removal tools destroy the model's brain, dropping its performance on standard benchmarks like HumanEval or MMLU. 
 
-By applying **95th-Percentile Winsorization Clamping**, we isolated and removed *only* the specific refusal directions, while keeping the rest of the model's general intelligence and formatting capabilities perfectly stable.
+By applying **95th-Percentile Winsorization Clamping**, iisolated and removed *only* the specific refusal directions, while keeping the rest of the model's general intelligence and formatting capabilities perfectly stable.
