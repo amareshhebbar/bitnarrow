@@ -70,12 +70,12 @@ ididn't get this working on the first try. The model fought back with fallback s
 ## Complete Repository Index
 
 All development phases are modularly documented across our technical deep dives:
-1. **[Part 1: Activation Hunting & Dimension Mismatches](./docs/01_activation_hunting.md)** - Tracking hidden states at the first output token, fixing loop indentation bugs, and bypassing 8960 shape crashes.
-2. **[Part 2: The Winsorization Breakthrough vs. Soft Refusals](./docs/02_winsor_breakthrough.md)** - Overcoming numeric outlier hijacks and implementing 95th-percentile activation clamping.
+1. **[Part 1: Activation Hunting & Dimension Mismatches](./docs/01_activation_.mdd)** - Tracking hidden states at the first output token, fixing loop indentation bugs, and bypassing 8960 shape crashes.
+2. **[Part 2: The Winsorization Breakthrough vs. Soft Refusals](./docs/02_winsor.md)** - Overcoming numeric outlier hijacks and implementing 95th-percentile activation clamping.
 3. **[Part 3: Production Deployment & 4-bit Workarounds](./docs/03_production_deployment.md)** - Troubleshooting bitsandbytes serialization errors, resolving `NotImplementedError`, and mapping custom state dictionaries.
 4. **[Part 4: Legal Framework, Compliance & Intent](./docs/04_legal_and_intent.md)** - Open-source security research validation and capability boundaries.
 5. **[Part 5: Full-Spectrum Architecture & Data Flow](./docs/05_architecture.md)** - Mathematical transformation formulas and structural matrix alignment data flows.
-6. **[Part 6: Q&A & Engineering War Stories](./docs/06_qa_and_war_stories.md)** - System design troubleshooting records and solutions.
+6. **[Part 6: Q&A & Engineering War Stories](./docs/06_qANDa.md)** - System design troubleshooting records and solutions.
 
 
 
