@@ -1,0 +1,2 @@
+bitnarrow[torch]>=0.1.0
+gradio>=4.0

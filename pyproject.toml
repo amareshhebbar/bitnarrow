@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bitnarrow"
+version = "0.1.0"
+description = "Open weight model surgery lab: edit, measure, gate, and ship LLM transformations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Amaresh Hebbar", email = "hebbar.gvamaresh@gmail.com" }]
+keywords = [
+  "llm",
+  "model-surgery",
+  "abliteration",
+  "pruning",
+  "evaluation",
+  "interpretability",
+  "transformers",
+  "huggingface",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "pyyaml>=6.0",
+  "huggingface_hub>=0.24",
+]
+
+[project.optional-dependencies]
+torch = [
+  "torch>=2.2",
+  "transformers>=4.44",
+  "safetensors>=0.4",
+  "accelerate>=0.30",
+]
+eval = [
+  "datasets>=2.19",
+  "lm-eval>=0.4.3",
+]
+quant = ["bitsandbytes>=0.43"]
+merge = ["mergekit>=0.0.5"]
+space = ["gradio>=4.0"]
+all = ["bitnarrow[torch,eval,quant,space]"]
+dev = [
+  "bitnarrow[torch]",
+  "pytest>=8.0",
+  "ruff>=0.5",
+  "build>=1.2",
+  "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/amareshhebbar/bitnarrow"
+Repository = "https://github.com/amareshhebbar/bitnarrow"
+Issues = "https://github.com/amareshhebbar/bitnarrow/issues"
+Models = "https://huggingface.co/AmareshHebbar"
+
+[project.scripts]
+bitnarrow = "bitnarrow.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bitnarrow"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/bitnarrow", "recipes", "spaces", "tests", "README.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["torch: requires torch and transformers"]

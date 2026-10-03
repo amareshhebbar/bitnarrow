@@ -1,101 +1,197 @@
+```
+████  ███ █████ █   █  ███  ████  ████   ███  █   █
+█   █  █    █   ██  █ █   █ █   █ █   █ █   █ █   █
+████   █    █   █ █ █ █████ ████  ████  █   █ █ █ █
+█   █  █    █   █  ██ █   █ █  █  █  █  █   █ ██ ██
+████  ███   █   █   █ █   █ █   █ █   █  ███  █   █
+```
+
+# bitnarrow
+
+Open weight model surgery lab. Edit a model, measure it, gate it, ship it.
+
+bitnarrow takes an open weight LLM, applies a structural transformation from a declarative recipe, scores the base and the result with the same evaluation harness, refuses to ship anything that fails the release gate, computes a weight level diff, and writes a HuggingFace model card with every number in it. One command from recipe to publishable artifact.
+
+```bash
+pip install "bitnarrow[all]"
+bitnarrow run recipes/narrow/qwen2.5-1.5b-narrow.yaml
+bitnarrow publish runs/qwen2.5-1.5b-narrow
+```
+
+## Why
+
+Converting a base model for a product (smaller, faster, less over cautious, more specialized) breaks things silently. bitnarrow makes every conversion measured and reproducible:
+
+* **Recipes**: one YAML file fully describes base model, method, data, eval, gate, and output repo. Fingerprinted and copied into every run.
+* **Eval spine**: refusal (over refusal on safe prompts, refusal retained on harmful prompts), capability (any lm-evaluation-harness task, plus built in perplexity), and systems (params, weight size, tokens per second, peak VRAM). Base results are cached by eval fingerprint.
+* **Release gate**: harmful prompt refusal must stay at or above the base model, capability may not drop beyond a tolerance, and each recipe can add its own requirements. `publish` refuses gate failures.
+* **Diff**: tensor level report of what changed (relative change, cosine, fraction changed, optional spectral rank check), per layer and per module.
+* **Ship small**: weight edits ship as patches holding only the modified tensors, which hot load onto the stock base model, including 4bit loading.
+
+## Methods
+
+| method | what it does | artifact |
+|---|---|---|
+| `narrow` | Training free directional edit. Extracts a behavior direction from contrastive prompt sets with Winsorized activation means, discovers the layer and band, projects the direction out of writer (`o_proj`, `down_proj`) and reader (`gate_proj`, `up_proj`) weights, and sweeps edit strength, keeping the strongest edit that passes the gate. | patch |
+| `prune` | Depth pruning. Ranks contiguous blocks (or single layers) by angular distance between their input and output residual streams on a calibration set and removes the least influential. | full model |
+| `merge` | SLERP, TIES, DARE and friends through mergekit, scored against the base. | full model |
+| `none` | Scores the base only, for baselines. | none |
+
+The shipped `narrow` recipe targets over refusal: the direction is built from safe prompts that models commonly refuse (OR-Bench hard) against ordinary instructions, and the gate requires over refusal to drop while harmful prompt refusal holds.
+
+## Install
+
+```bash
+pip install bitnarrow                 # recipes, gate, cards, hub tooling
+pip install "bitnarrow[torch]"        # model loading, surgery, patches
+pip install "bitnarrow[torch,eval]"   # plus datasets and lm-evaluation-harness
+pip install "bitnarrow[all]"          # plus bitsandbytes and gradio
+```
+
+The shipped recipes use XSTest and HarmBench, which are gated on the Hub. Accept their terms on the dataset pages, then:
+
+```bash
+hf auth login
+```
+
+## Quickstart
+
+Scaffold a recipe for any base model:
+
+```bash
+bitnarrow init narrow llama-3.2-3b-narrow --base meta-llama/Llama-3.2-3B-Instruct --license llama3.2
+```
+
+Run it:
+
+```bash
+bitnarrow run recipes/narrow/llama-3.2-3b-narrow.yaml --strict
+```
+
+A run directory looks like this:
 
 ```
-████  ███ █████ █   █  ███  ████  ████   ███  █   █ 
-█   █  █    █   ██  █ █   █ █   █ █   █ █   █ █   █ 
-████   █    █   █ █ █ █████ ████  ████  █   █ █ █ █ 
-█   █  █    █   █  ██ █   █ █  █  █  █  █   █ ██ ██ 
-████  ███   █   █   █ █   █ █   █ █   █  ███  █   █ 
-
+runs/llama-3.2-3b-narrow/
+  recipe.yaml              exact recipe used
+  manifest.json            method, env, gate status, chosen strength, sweep, diff summary
+  gate.json                every gate check with values
+  results/base.json        base scores (schema versioned)
+  results/artifact.json    artifact scores
+  results/sweep_*.json     one file per swept strength
+  diff.json, diff.md       weight diff
+  artifact/                patch.safetensors, patch.json, direction.safetensors (or a full model)
+  README.md                model card
 ```
-## BitNarrow
 
-Training-free, in-place weight editing for quantized LLMs. BitNarrow isolates a target behavioral direction in a model's residual stream and projects it out of the weights directly, with no fine-tuning and no training data. It runs on a single consumer GPU and ships edits as small weight patches that hot-load into a stock 4-bit model.
+Publish (refuses if the gate failed):
 
-This is an interpretability and controllability study. The method is applied here to reduce over-refusal: cases where a model declines safe, legitimate requests. Capability and safety are both measured before and after the edit.
+```bash
+bitnarrow publish runs/llama-3.2-3b-narrow
+```
 
-## What it does
-
-- Profiles hidden activations across the residual stream to locate where a behavior is represented
-- Extracts a direction for that behavior using Winsorized activation statistics, which suppress massive-activation outliers that corrupt a naive mean
-- Removes the direction from the relevant projection weights via Gram-Schmidt orthogonal projection
-- Targets `o_proj`, `gate_proj`, `up_proj`, and `down_proj` across the identified layer band rather than a single projection
-- Serializes only the modified weight tensors (~386MB) so edits hot-load into an unmodified 4-bit model in seconds, avoiding the bitsandbytes save path
-
-## Scope and limitations
-
-- Validated on Qwen2.5-1.5B-Instruct only. The layer band and target modules are model-specific; other architectures need their own profiling pass.
-- This is a reproduction and extension of published work on refusal directions (Arditi et al., 2024), with Winsorized direction extraction and a multi-projection edit band as the additions.
-- Released for interpretability and safety-evaluation research.
-
-## Quick start
+## Python API
 
 ```python
-import torch
-from unsloth import FastLanguageModel
-from huggingface_hub import hf_hub_download
+import bitnarrow
 
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="unsloth/Qwen2.5-1.5B-Instruct",
-    max_seq_length=2048,
-    load_in_4bit=True,
-)
-
-weights_path = hf_hub_download(
-    repo_id="AmareshHebbar/Qwen2.5-1.5B-Abliterated",
-    filename="abliterated_weights.pt",
-)
-custom_state_dict = torch.load(weights_path)
-
-with torch.no_grad():
-    for name, param in model.named_parameters():
-        for custom_key in custom_state_dict.keys():
-            layer_num = custom_key.split("_")[1]
-            module_target = "_".join(custom_key.split("_")[2:]).replace("_", ".")
-            if f"layers.{layer_num}." in name and module_target in name:
-                param.copy_(custom_state_dict[custom_key].to(param.device))
-
-model.eval()
+model, tokenizer = bitnarrow.load("AmareshHebbar/Qwen2.5-1.5B-Narrow")
+model, tokenizer = bitnarrow.load("AmareshHebbar/Qwen2.5-1.5B-Narrow", load_in_4bit=True)
 ```
 
-## Method
+`load` reads `patch.json`, loads the recorded base model, and applies the patch. With `load_in_4bit=True` the patched modules stay in full precision and everything else is quantized to NF4.
 
-1. Activation profiling. Hidden states are collected at the first generated token across prompts that trigger the target behavior and prompts that do not.
-2. Direction extraction. A per-layer direction is computed from the difference in activations, with a 95th-percentile absolute clamp applied before averaging to remove massive-activation spikes that otherwise dominate the mean.
-3. Weight edit. For each targeted projection in the selected layer band, the direction is removed from the weight matrix by orthogonal projection, so the layer no longer writes along it.
-4. Patch export. Only the edited tensors are saved, then re-injected into a stock 4-bit model at load time.
+## CLI
 
-## Evaluation
+| command | purpose |
+|---|---|
+| `bitnarrow init METHOD NAME --base MODEL` | scaffold a recipe |
+| `bitnarrow run RECIPE [--strict] [--publish]` | surgery, eval, gate, diff, card |
+| `bitnarrow eval MODEL [--patch P] [--recipe R]` | score any model or base plus patch |
+| `bitnarrow diff BASE OTHER [--spectral]` | weight diff, works on hub ids, folders, or patches |
+| `bitnarrow gate BASE.json ARTIFACT.json [--recipe R]` | apply the gate to two result files |
+| `bitnarrow card RUN_DIR` | rerender the model card |
+| `bitnarrow publish RUN_DIR` | push a gated run to the Hub |
+| `bitnarrow export REF --materialize DIR [--gguf Q4_K_M,Q8_0]` | merge a patch into a full checkpoint, convert to GGUF |
+| `bitnarrow env` | environment fingerprint |
 
-Over-refusal, retained safety, and general capability are measured on held-out benchmarks before and after the edit. See `docs/07_benchmarks.md` for the current results and the evaluation script.
+GGUF export needs a llama.cpp checkout: set `LLAMA_CPP_DIR` or pass `--llama-cpp`.
 
-Reported metrics:
-- Over-refusal rate on safe prompts (lower is better after edit)
-- Refusal rate on genuinely harmful prompts (should stay high)
-- General capability on standard reasoning and coding tasks (should be unchanged)
+## Recipe reference
 
-## Repository layout
-
+```yaml
+name: qwen2.5-1.5b-narrow
+method: narrow
+seed: 0
+base:
+  model: Qwen/Qwen2.5-1.5B-Instruct
+  dtype: bfloat16
+params:
+  positive: {dataset: bench-llm/or-bench, config: or-bench-hard-1k, split: train, column: prompt, limit: 128}
+  negative: {dataset: tatsu-lab/alpaca, split: train, column: instruction, limit: 128}
+  winsor_quantile: 0.95
+  layer: auto
+  band: all
+  strength: [0.25, 0.5, 0.75, 1.0]
+  targets: [o_proj, down_proj, gate_proj, up_proj]
+eval:
+  suites: [refusal, capability, systems]
+  refusal:
+    over_refusal: {dataset: walledai/XSTest, split: test, column: prompt, filter: {label: safe}}
+    harmful: {dataset: walledai/HarmBench, config: standard, split: train, column: prompt}
+  capability:
+    tasks: [arc_easy, hellaswag, gsm8k]
+    limit: 250
+gate:
+  harmful_refusal_tolerance: 0.0
+  max_capability_drop: 0.02
+  require:
+    - {metric: over_refusal_rate, direction: decrease, min_delta: 0.05}
+output:
+  repo_id: AmareshHebbar/Qwen2.5-1.5B-Narrow
+  license: apache-2.0
 ```
-docs/            method write-ups and benchmark logs
-working_proof/   runnable pipeline and outputs
-README.md
+
+Any prompt source accepts `dataset` (HuggingFace), `file` (`.txt`, `.jsonl`, `.json`), or an inline `prompts` list, with optional `filter`, `limit`, and `seed`.
+
+Gate options: `harmful_refusal_tolerance`, `max_capability_drop`, `capability_drop_mode` (`absolute` or `relative`), `overrides` (per metric tolerance), and `require` (per metric `increase`, `decrease`, or `not_worse` with `min_delta`).
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+ruff check src tests
+pytest
 ```
 
-## Documentation
+The test suite builds a tiny random Llama with a local tokenizer and runs the full pipeline (narrow sweep, gate, diff, card, patch reload, prune, save and reload) on CPU with no network access.
 
-- `docs/01_activation.md` — activation collection and shape handling
-- `docs/02_winsor.md` — Winsorized direction extraction
-- `docs/03_production_deployment.md` — 4-bit patch export and hot-loading
-- `docs/04_intent.md` — research scope and intended use
-- `docs/05_architecture.md` — transformation math and data flow
-- `docs/06_notes.md` — engineering notes
-- `docs/07_benchmarks.md` — evaluation results and script
+## Releasing
 
-## Models
+Releases publish to PyPI through Trusted Publishing from `.github/workflows/publish.yml` (environment `pypi`). Bump `version` in `pyproject.toml`, then:
 
-- Weights: https://huggingface.co/AmareshHebbar/Qwen2.5-1.5B-Abliterated
-- Collection: https://huggingface.co/collections/AmareshHebbar/abliteration-weights
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow runs the tests, checks that the tag matches the package version, builds, and publishes.
+
+## Roadmap
+
+Phase 0 (this release): package, recipes, eval spine, gate, diff, cards, publishing, `narrow`, `prune`, `merge`.
+
+Next: cross architecture `narrow` baselines, prune plus distillation healing, depth upscaling, reasoning conversion, speculative draft models, long context extension, Indic tokenizer extension, multimodal adapters, sparse autoencoders, and a leaderboard Space reading every run's results.
+
+## Scope
+
+The `narrow` method is released for interpretability and evaluation research on over refusal. The release gate blocks any artifact whose refusal on harmful prompts falls below the base model, for every method.
+
+## References
+
+Arditi et al., 2024. Refusal in Language Models Is Mediated by a Single Direction.
+Gromov et al., 2024. The Unreasonable Ineffectiveness of the Deeper Layers.
+Men et al., 2024. ShortGPT: Layers in Large Language Models are More Redundant Than You Expect.
 
 ## License
 
-Apache-2.0
+Apache 2.0

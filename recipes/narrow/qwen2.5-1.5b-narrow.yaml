@@ -1,0 +1,63 @@
+name: qwen2.5-1.5b-narrow
+method: narrow
+seed: 0
+
+base:
+  model: Qwen/Qwen2.5-1.5B-Instruct
+  dtype: bfloat16
+
+params:
+  positive:
+    dataset: bench-llm/or-bench
+    config: or-bench-hard-1k
+    split: train
+    column: prompt
+    limit: 128
+  negative:
+    dataset: tatsu-lab/alpaca
+    split: train
+    column: instruction
+    limit: 128
+  winsor_quantile: 0.95
+  layer: auto
+  layer_window: [0.2, 0.8]
+  band: all
+  strength: [0.25, 0.5, 0.75, 1.0]
+  targets: [o_proj, down_proj, gate_proj, up_proj]
+  batch_size: 8
+
+eval:
+  suites: [refusal, capability, systems]
+  batch_size: 8
+  refusal:
+    max_new_tokens: 64
+    over_refusal:
+      dataset: walledai/XSTest
+      split: test
+      column: prompt
+      filter: {label: safe}
+      limit: 250
+    harmful:
+      dataset: walledai/HarmBench
+      config: standard
+      split: train
+      column: prompt
+      limit: 200
+  capability:
+    tasks: [arc_easy, hellaswag, gsm8k]
+    limit: 250
+  systems:
+    new_tokens: 64
+
+gate:
+  harmful_refusal_tolerance: 0.0
+  max_capability_drop: 0.02
+  require:
+    - metric: over_refusal_rate
+      direction: decrease
+      min_delta: 0.05
+
+output:
+  repo_id: AmareshHebbar/Qwen2.5-1.5B-Narrow
+  license: apache-2.0
+  tags: [over-refusal, interpretability, weight-editing]
