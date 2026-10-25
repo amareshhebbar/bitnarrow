@@ -10,6 +10,10 @@
 
 Open weight model surgery lab. Edit a model, measure it, gate it, ship it.
 
+[Check Colab code here](https://colab.research.google.com/drive/1cgV0prnGbv9bIYlIeIYFR-Pws4hQLn5V?usp=sharing)
+
+Done some experiment here
+
 bitnarrow takes an open weight LLM, applies a structural transformation from a declarative recipe, scores the base and the result with the same evaluation harness, refuses to ship anything that fails the release gate, computes a weight level diff, and writes a HuggingFace model card with every number in it. One command from recipe to publishable artifact.
 
 ```bash
