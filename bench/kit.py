@@ -317,7 +317,8 @@ class ChatClient:
         if delay:
             time.sleep(delay)
 
-    def chat(self, system: str, user: str, max_tokens: int = 16, temperature: float = 0.0, tries: int = 8) -> str:
+    def chat(self, system: str, user: str, max_tokens: int = 16, temperature: float = 0.0, tries: int = 8,
+             extra: dict | None = None) -> str:
         last = None
         for attempt in range(tries):
             if self.budget and self.budget.exceeded():
@@ -329,6 +330,7 @@ class ChatClient:
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    extra_body=extra or None,
                 )
                 if self.budget and resp.usage:
                     self.budget.add(resp.usage.prompt_tokens or 0, resp.usage.completion_tokens or 0)
