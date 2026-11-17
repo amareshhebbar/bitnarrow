@@ -22,3 +22,6 @@ checkpoints/
 runs/
 exports/
 _publish/
+bench/data/
+bench/results/
+bench/recipes/

@@ -1,0 +1,18 @@
+qwen7b:
+  model: Qwen/Qwen2.5-7B-Instruct
+  label: Qwen2.5 7B Instruct
+  license: apache-2.0
+  dtype: bfloat16
+  repo_id: AmareshHebbar/BitNarrow_Qwen2.5_7B_Instruct_Narrow
+llama8b:
+  model: meta-llama/Llama-3.1-8B-Instruct
+  label: Llama 3.1 8B Instruct
+  license: llama3.1
+  dtype: bfloat16
+  repo_id: AmareshHebbar/BitNarrow_Llama3.1_8B_Instruct_Narrow
+smoke:
+  model: Qwen/Qwen2.5-0.5B-Instruct
+  label: Qwen2.5 0.5B Instruct (smoke test only)
+  license: apache-2.0
+  dtype: float16
+  repo_id: null
