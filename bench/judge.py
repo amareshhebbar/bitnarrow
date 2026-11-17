@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import random
 import re
@@ -40,17 +41,21 @@ def judges() -> dict:
             "sample": int(env("JUDGE1_SAMPLE", 0) or 0),
             "price_in": float(env("JUDGE1_PRICE_IN", 1.0)),
             "price_out": float(env("JUDGE1_PRICE_OUT", 5.0)),
+            "max_tokens": int(env("JUDGE1_MAX_TOKENS", 8)),
+            "extra": json.loads(env("JUDGE1_EXTRA", "{}") or "{}"),
         }
     key2 = env("JUDGE2_API_KEY") or env("GROQ_API_KEY")
     if key2:
         out["judge2"] = {
             "base_url": env("JUDGE2_BASE_URL", "https://api.groq.com/openai/v1"),
             "api_key": key2,
-            "model": env("JUDGE2_MODEL", "llama-3.3-70b-versatile"),
+            "model": env("JUDGE2_MODEL", "openai/gpt-oss-120b"),
             "rpm": float(env("JUDGE2_RPM", 25) or 0),
             "sample": int(env("JUDGE2_SAMPLE", 120) or 0),
             "price_in": float(env("JUDGE2_PRICE_IN", 0.0)),
             "price_out": float(env("JUDGE2_PRICE_OUT", 0.0)),
+            "max_tokens": int(env("JUDGE2_MAX_TOKENS", 300)),
+            "extra": json.loads(env("JUDGE2_EXTRA", '{"reasoning_effort": "low"}') or "{}"),
         }
     for name, cfg in out.items():
         if not cfg["base_url"]:
@@ -106,10 +111,11 @@ def run_judge(tag: str, name: str, cfg: dict, items: list[dict], workers: int, m
 
     def one(it: dict) -> str | None:
         user = USER.format(prompt=it["prompt"][:1500], output=(it["output"] or "(empty)")[:1500])
-        reply = client.chat(SYSTEM, user, max_tokens=8)
+        reply = client.chat(SYSTEM, user, max_tokens=cfg["max_tokens"], extra=cfg["extra"])
         label = parse(reply)
         if label is None:
-            reply = client.chat(SYSTEM + "\nAnswer with the single word only.", user, max_tokens=8)
+            reply = client.chat(SYSTEM + "\nAnswer with the single word only.", user,
+                                max_tokens=cfg["max_tokens"], extra=cfg["extra"])
             label = parse(reply)
         kit.append_jsonl(
             path,
