@@ -2,7 +2,7 @@
 set -euo pipefail
 W="${W:-/workspace}"
 cd "$W"
-export HF_HOME="$W/hf" PIP_ROOT_USER_ACTION=ignore TOKENIZERS_PARALLELISM=false
+export HF_HOME="$W/hf" PIP_ROOT_USER_ACTION=ignore TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 [ -f "$W/.env" ] || { echo "put your filled .env at $W/.env first"; exit 1; }
 set -a; . "$W/.env"; set +a
 
@@ -25,11 +25,8 @@ if [ "${SMOKE:-0}" = "1" ]; then
   exit 0
 fi
 
-(cd modeldiffr && bash bench/run.sh) > "$W/modeldiffr_pass1.log" 2>&1 &
-MD=$!
 (cd bitnarrow && bash bench/run.sh) 2>&1 | tee "$W/bitnarrow.log"
-wait "$MD" || echo "modeldiffr pass 1 had an error, see $W/modeldiffr_pass1.log"
-
+python -c "import torch; torch.cuda.empty_cache()"
 (cd modeldiffr && BITNARROW_EXPORTS="$W/bitnarrow/exports" bash bench/run.sh) 2>&1 | tee "$W/modeldiffr.log"
 
 if [ "${PUBLISH:-1}" = "1" ]; then
