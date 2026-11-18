@@ -126,7 +126,7 @@ def compute_tag(tag_dir: Path) -> dict:
         run = {
             "chosen_strength": m.get("chosen_strength"),
             "gate_passed_on_dev": m.get("gate_passed"),
-            "layer": meta.get("layer"),
+            "layer": meta.get("direction_layer", meta.get("layer")),
             "band": meta.get("band"),
             "sweep_on_dev": m.get("sweep"),
         }

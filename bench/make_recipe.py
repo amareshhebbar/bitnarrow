@@ -25,9 +25,9 @@ def main() -> None:
             "winsor_quantile": 0.95,
             "layer": "auto",
             "layer_window": [0.2, 0.8],
-            "band": "all",
-            "strength": [0.25, 0.5, 0.75, 1.0],
-            "targets": ["o_proj", "down_proj", "gate_proj", "up_proj"],
+            "band": "auto",
+            "strength": [0.5, 1.0, 1.5, 2.0],
+            "targets": ["o_proj"],
             "batch_size": 8,
         },
         "eval": {
